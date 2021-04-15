@@ -41,7 +41,6 @@
         <script src="src/plugins/leaflet.markercluster.js"></script>
         <script src="src/plugins/leaflet-legend.js"></script>
         <script src="src/jquery-ui.min.js"></script>
-        <script src="src/turf.min.js"></script>
 
         <style>
             #mapdiv {
@@ -529,27 +528,31 @@
                 refreshBUOWL();
             });
 
+
+
             function refreshBUOWL(){
               $.ajax({url:'load_data.php',
                 data: {tbl:'dj_buowl', flds:"id, habitat_id, habitat, recentstatus, hist_occup"},
                 type: 'POST',
                 success: function(response){
-                  arHabitatIDs=[];
-                  jsnBUOWL= JSON.parse(response);
-                  if (lyrBUOWL) {
-                    ctlLayers.removeLayer(lyrBUOWL);
-                    lyrBUOWL.remove();
-                    lyrBUOWLbuffer.remove();
+                  if (response.substring(0,5)=="ERROR"){
+                    alert(response);
+                  } else {
+                    arHabitatIDs=[];
+                    jsnBUOWL= JSON.parse(response);
+                    if (lyrBUOWL) {
+                      ctlLayers.removeLayer(lyrBUOWL);
+                      lyrBUOWL.remove();
+                      //lyrBUOWLbuffer.remove();
+                    }
+                    lyrBUOWL = L.geoJSON(jsnBUOWL, {style:styleBUOWL, onEachFeature:processBUOWL, filter:filterBUOWL}).addTo(mymap);
+                    ctlLayers.addOverlay(lyrBUOWL, "Burrowing Owl Habitat");
+                      arHabitatIDs.sort(function(a,b){return a-b});
+                      $("#txtFindBUOWL").autocomplete({
+                          source:arHabitatIDs
+                      });
+                      refreshBUOWLbuffer();
                   }
-                  lyrBUOWL = L.geoJSON(jsnBUOWL, {style:styleBUOWL, onEachFeature:processBUOWL, filter:filterBUOWL}).addTo(mymap);
-                  ctlLayers.addOverlay(lyrBUOWL, "Burrowing Owl Habitat");
-                    arHabitatIDs.sort(function(a,b){return a-b});
-                    $("#txtFindBUOWL").autocomplete({
-                        source:arHabitatIDs
-                    });
-                    jsnBUOWLbuffer = turf.buffer(lyrBUOWL.toGeoJSON(), 0.3, {units:'kilometers'});
-                    lyrBUOWLbuffer = L.geoJSON(jsnBUOWLbuffer, {style:{color:'yellow', dashArray:'5,5', fillOpacity:0}}).addTo(mymap);
-                    lyrBUOWL.bringToFront();
                 },
               error: function(xhr, status, error){
                 alert("ERROR: "+error);
@@ -557,6 +560,27 @@
               });
             };
 
+            function refreshBUOWLbuffer(){
+              $.ajax({url:'load_data.php',
+                data: {tbl:'dj_buowl', flds:"id, habitat_id, habitat, recentstatus, hist_occup", distance:300},
+                type: 'POST',
+                success: function(response){
+                  if (response.substring(0,5)=="ERROR"){
+                    alert(response);
+                  } else {
+                    jsnBUOWLbuffer= JSON.parse(response);
+                    if (lyrBUOWLbuffer) {
+                      lyrBUOWLbuffer.remove();
+                    }
+                    lyrBUOWLbuffer = L.geoJSON(jsnBUOWLbuffer, {style:{color: 'hotpink', dashArray:'5,5',fillOpacity:0}, filter:filterBUOWL}).addTo(mymap);
+                    lyrBUOWL.bringToFront();
+                  }
+                },
+              error: function(xhr, status, error){
+                alert("ERROR: "+error);
+                }
+              });
+            };
             // ************ Client Linears **********
 
             $("#btnLinearProjects").click(function(){
@@ -596,9 +620,43 @@
                 var att = json.properties;
                 lyr.bindTooltip("<h4>Linear Project: "+att.project+"</h4>Type: "+att.type+"<br>ROW Width: "+att.row_width+"<br>Length: "+returnMultiLength(lyr.getLatLngs()).toFixed(0));
                 arProjectIDs.push(att.project.toString());
-                var jsnBuffer = turf.buffer(json, att.row_width/1000, {units:'kilometers'});
-                var lyrBuffer = L.geoJSON(jsnBuffer, {style:{color:'gray', dashArray:'5,5'}});
-                lyrClientLinesBuffer.addLayer(lyrBuffer);
+
+            }
+
+            function filterClientLines(json) {
+                var arProjectFilter=[];
+                $("input[name=fltProject]").each(function(){
+                    if (this.checked) {
+                        arProjectFilter.push(this.value);
+                    }
+                });
+                var att = json.properties;
+                switch (att.type) {
+                    case "Pipeline":
+                        return (arProjectFilter.indexOf('Pipeline')>=0);
+                        break;
+                    case "Flowline":
+                        return (arProjectFilter.indexOf('Flowline')>=0);
+                        break;
+                    case "Flowline, est.":
+                        return (arProjectFilter.indexOf('Flowline')>=0);
+                        break;
+                    case "Electric Line":
+                        return (arProjectFilter.indexOf('Electric')>=0);
+                        break;
+                    case "Access Road - Confirmed":
+                        return (arProjectFilter.indexOf('Road')>=0);
+                        break;
+                    case "Access Road - Estimated":
+                        return (arProjectFilter.indexOf('Road')>=0);
+                        break;
+                    case "Extraction":
+                        return (arProjectFilter.indexOf('Extraction')>=0);
+                        break;
+                    default:
+                        return (arProjectFilter.indexOf('Other')>=0);
+                        break;
+                }
             }
 
             function filterClientLines(json) {
@@ -691,22 +749,25 @@
                 data: {tbl:'dj_linear', flds:"id, type, row_width, project"},
                 type: 'POST',
                 success: function(response){
-                  arProjectDs=[];
-                  jsnLinears= JSON.parse(response);
-                  if (lyrClientLines) {
-                    ctlLayers.removeLayer(lyrClientLines);
-                    lyrClientLines.remove();
-                    lyrClientLinesBuffer.remove();
-                  }
-                  lyrClientLinesBuffer = L.featureGroup();
-                  lyrClientLines = L.geoJSON(jsnLinears, {style:styleClientLinears, onEachFeature:processClientLinears, filter:filterClientLines}).addTo(mymap);
-                  ctlLayers.addOverlay(lyrClientLines, "Linear Projects");
-                    arProjectIDs.sort(function(a,b){return a-b});
-                    $("#txtFindProject").autocomplete({
-                        source:arProjectIDs
-                    });
-                    lyrClientLinesBuffer.addTo(mymap);
-                    lyrClientLines.bringToFront();
+                  if (response.substring(0,5)=="ERROR"){
+                    alert(response);
+                  } else {
+                    arProjectDs=[];
+                    jsnLinears= JSON.parse(response);
+                    if (lyrClientLines) {
+                      ctlLayers.removeLayer(lyrClientLines);
+                      lyrClientLines.remove();
+                      lyrClientLinesBuffer.remove();
+                    }
+                    lyrClientLinesBuffer = L.featureGroup();
+                    lyrClientLines = L.geoJSON(jsnLinears, {style:styleClientLinears, onEachFeature:processClientLinears, filter:filterClientLines}).addTo(mymap);
+                    ctlLayers.addOverlay(lyrClientLines, "Linear Projects");
+                      arProjectIDs.sort(function(a,b){return a-b});
+                      $("#txtFindProject").autocomplete({
+                          source:arProjectIDs
+                      });
+                      refreshLinearsBuffers();
+                    }
                 },
               error: function(xhr, status, error){
                 alert("ERROR: "+error);
@@ -714,6 +775,28 @@
               });
             };
 
+
+            function refreshLinearsBuffers(){
+              $.ajax({url:'load_data.php',
+                data: {tbl:'dj_linear', flds:"id, type, row_width, project", distance:"row_width"},
+                type: 'POST',
+                success: function(response){
+                  if (response.substring(0,5)=="ERROR"){
+                    alert(response);
+                  } else {
+                    jsnLinearsBuffers= JSON.parse(response);
+                    if (lyrClientLinesBuffer) {
+                      lyrClientLinesBuffer.remove();
+                    }
+                    lyrClientLinesBuffer = L.geoJSON(jsnLinearsBuffers, {style:{color: 'grey', dashArray:'5,5', fillOpacity:0},
+                    filter:filterClientLines}).addTo(mymap);
+                    }
+                },
+              error: function(xhr, status, error){
+                alert("ERROR: "+error);
+                }
+              });
+            };
             // *********  Eagle Functions *****************
 
             $("#btnEagle").click(function(){
@@ -786,18 +869,22 @@
                 data: {tbl:'dj_eagle', flds:"id, status, nest_id"},
                 type: 'POST',
                 success: function(response){
-                  arEagleIDs=[];
-                  jsnEagles= JSON.parse(response);
-                  if (lyrEagleNests) {
-                    ctlLayers.removeLayer(lyrEagleNests);
-                    lyrEagleNests.remove();
+                  if (response.substring(0,5)=="ERROR"){
+                    alert(response);
+                  } else {
+                    arEagleIDs=[];
+                    jsnEagles= JSON.parse(response);
+                    if (lyrEagleNests) {
+                      ctlLayers.removeLayer(lyrEagleNests);
+                      lyrEagleNests.remove();
+                    }
+                    lyrEagleNests = L.geoJSON(jsnEagles, {pointToLayer:returnEagleMarker, filter:filterEagle}).addTo(mymap);
+                    ctlLayers.addOverlay(lyrEagleNests, "Eagle Nest");
+                      arEagleIDs.sort(function(a,b){return a-b});
+                      $("#txtFindEagle").autocomplete({
+                          source:arEagleIDs
+                      });
                   }
-                  lyrEagleNests = L.geoJSON(jsnEagles, {pointToLayer:returnEagleMarker, filter:filterEagle}).addTo(mymap);
-                  ctlLayers.addOverlay(lyrEagleNests, "Eagle Nest");
-                    arEagleIDs.sort(function(a,b){return a-b});
-                    $("#txtFindEagle").autocomplete({
-                        source:arEagleIDs
-                    });
                 },
               error: function(xhr, status, error){
                 alert("ERROR: "+error);
@@ -903,25 +990,29 @@
                 data: {tbl:'dj_raptor', flds:"id, nest_id, recentstatus, recentspecies, lastsurvey"},
                 type: 'POST',
                 success: function(response){
-                  arRaptorIDs=[];
-                  jsnRaptor= JSON.parse(response);
-                  if (lyrMarkerCluster) {
-                    ctlLayers.removeLayer(lyrMarkerCluster);
-                    lyrMarkerCluster.remove();
-                    lyrRaptorNests.remove();
-                  }
-                  lyrRaptorNests = L.geoJSON(jsnRaptor, {pointToLayer:returnRaptorMarker, filter:filterRaptor});
+                  if (response.substring(0,5)=="ERROR"){
+                    alert(response);
+                  } else {
+                    arRaptorIDs=[];
+                    jsnRaptor= JSON.parse(response);
+                    if (lyrMarkerCluster) {
+                      ctlLayers.removeLayer(lyrMarkerCluster);
+                      lyrMarkerCluster.remove();
+                      lyrRaptorNests.remove();
+                    }
+                    lyrRaptorNests = L.geoJSON(jsnRaptor, {pointToLayer:returnRaptorMarker, filter:filterRaptor});
 
-                    arRaptorIDs.sort(function(a,b){return a-b});
-                    $("#txtFindRaptor").autocomplete({
-                        source:arRaptorIDs
-                    });
-                    lyrMarkerCluster = L.markerClusterGroup();
-                    lyrMarkerCluster.clearLayers();
-                    lyrMarkerCluster.addLayer(lyrRaptorNests);
-                    lyrMarkerCluster.addTo(mymap);
-                    ctlLayers.addOverlay(lyrMarkerCluster, "Raptor Nests");
-                },
+                      arRaptorIDs.sort(function(a,b){return a-b});
+                      $("#txtFindRaptor").autocomplete({
+                          source:arRaptorIDs
+                      });
+                      lyrMarkerCluster = L.markerClusterGroup();
+                      lyrMarkerCluster.clearLayers();
+                      lyrMarkerCluster.addLayer(lyrRaptorNests);
+                      lyrMarkerCluster.addTo(mymap);
+                      ctlLayers.addOverlay(lyrMarkerCluster, "Raptor Nests");
+                    }
+                  },
               error: function(xhr, status, error){
                 alert("ERROR: "+error);
                 }
@@ -935,13 +1026,17 @@
                 data: {tbl:'dj_gbh', flds:"id, activity"},
                 type: 'POST',
                 success: function(response){
-                  jsnGBH= JSON.parse(response);
-                  if (lyrGBH) {
-                    ctlLayers.removeLayer(lyrGBH);
-                    lyrGBH.remove();
+                  if (response.substring(0,5)=="ERROR"){
+                    alert(response);
+                  } else {
+                    jsnGBH= JSON.parse(response);
+                    if (lyrGBH) {
+                      ctlLayers.removeLayer(lyrGBH);
+                      lyrGBH.remove();
+                    }
+                    lyrGBH = L.geoJSON(jsnGBH, {style:{color:'fuchsia'}}).bindTooltip("GBH Nesting Area").addTo(mymap);
+                    ctlLayers.addOverlay(lyrGBH, "Heron Rookeries");
                   }
-                  lyrGBH = L.geoJSON(jsnGBH, {style:{color:'fuchsia'}}).bindTooltip("GBH Nesting Area").addTo(mymap);
-                  ctlLayers.addOverlay(lyrGBH, "Heron Rookeries");
                 },
               error: function(xhr, status, error){
                 alert("ERROR: "+error);
