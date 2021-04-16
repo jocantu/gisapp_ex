@@ -17,7 +17,7 @@
             } else {
                 return false;
             }
-        } 
+        }
     }
 
     function set_msg($msg, $level='danger') {
@@ -81,7 +81,7 @@
               return $row['validationcode'];
          } catch(PDOException $e) {
               return $e->getMessage();
-         }        
+         }
     }
 
     function update_login_date($pdo, $user) {
@@ -90,7 +90,7 @@
               $stmnt->execute([':username'=>$user]);
          } catch(PDOException $e) {
               return $e->getMessage();
-         }        
+         }
     }
 
     function verify_user_group($pdo, $user, $group) {

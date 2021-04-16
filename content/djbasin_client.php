@@ -814,16 +814,6 @@
                 return L.circle(latlng, {radius:804, color:clrNest,fillColor:'chartreuse', fillOpacity:0.5}).bindTooltip("<h4>Eagle Nest: "+att.nest_id+"</h4>Status: "+att.status);
             }
 
-            function filterEagle(json) {
-                var att=json.properties;
-                var optFilter = $("input[name=fltEagle]:checked").val();
-                if (optFilter=='ALL') {
-                    return true;
-                } else {
-                    return (att.status==optFilter);
-                }
-            }
-
             $("#txtFindEagle").on('keyup paste', function(){
                 var val = $("#txtFindEagle").val();
                 testLayerAttribute(arEagleIDs, val, "Eagle Nest ID", "#divFindEagle", "#divEagleError", "#btnFindEagle");
@@ -861,12 +851,23 @@
             });
 
             $("input[name=fltEagle]").click(function(){
-              refreshEagles();
+              var optFilter = $("input[name=fltEagle]:checked").val();
+              if (optFilter=='ALL') {
+                refreshEagles();
+              } else {
+                refreshEagles("status='"+optFilter+"'");
+              }
+
             });
 
-            function refreshEagles(){
+            function refreshEagles(whr){
+              if (whr) {
+                var objData = {tbl:'dj_eagle', flds:"id, status, nest_id", where:whr}
+              } else {
+                var objData = {tbl:'dj_eagle', flds:"id, status, nest_id"}
+              }
               $.ajax({url:'load_data.php',
-                data: {tbl:'dj_eagle', flds:"id, status, nest_id"},
+                data: objData,
                 type: 'POST',
                 success: function(response){
                   if (response.substring(0,5)=="ERROR"){
@@ -878,7 +879,7 @@
                       ctlLayers.removeLayer(lyrEagleNests);
                       lyrEagleNests.remove();
                     }
-                    lyrEagleNests = L.geoJSON(jsnEagles, {pointToLayer:returnEagleMarker, filter:filterEagle}).addTo(mymap);
+                    lyrEagleNests = L.geoJSON(jsnEagles, {pointToLayer:returnEagleMarker}).addTo(mymap);
                     ctlLayers.addOverlay(lyrEagleNests, "Eagle Nest");
                       arEagleIDs.sort(function(a,b){return a-b});
                       $("#txtFindEagle").autocomplete({
@@ -923,16 +924,6 @@
                         break;
                 }
                 return L.circle(latlng, optRaptor).bindPopup("<h4>Raptor Nest: "+att.nest_id+"</h4>Status: "+att.recentstatus+"<br>Species: "+att.recentspecies+"<br>Last Survey: "+att.lastsurvey);
-            }
-
-            function filterRaptor(json) {
-                var att=json.properties;
-                var optFilter = $("input[name=fltRaptor]:checked").val();
-                if (optFilter=='ALL') {
-                    return true;
-                } else {
-                    return (att.recentstatus==optFilter);
-                }
             }
 
             $("#txtFindRaptor").on('keyup paste', function(){
@@ -982,12 +973,22 @@
             });
 
             $("input[name=fltRaptor]").click(function(){
+              var optFilter = $("input[name=fltRaptor]:checked").val()
+              if (optFilter=='ALL') {
                 refreshRaptors();
+              } else {
+                refreshRaptors("recentstatus='"+optFilter+"'")
+              }
             });
 
-            function refreshRaptors(){
+            function refreshRaptors(whr){
+              if (whr) {
+                var objData = {tbl:'dj_raptor', flds:"id, nest_id, recentstatus, recentspecies, lastsurvey", where:whr}
+              } else {
+                var objData = {tbl:'dj_raptor', flds:"id, nest_id, recentstatus, recentspecies, lastsurvey"}
+              }
               $.ajax({url:'load_data.php',
-                data: {tbl:'dj_raptor', flds:"id, nest_id, recentstatus, recentspecies, lastsurvey"},
+                data: objData,
                 type: 'POST',
                 success: function(response){
                   if (response.substring(0,5)=="ERROR"){
@@ -1000,12 +1001,13 @@
                       lyrMarkerCluster.remove();
                       lyrRaptorNests.remove();
                     }
-                    lyrRaptorNests = L.geoJSON(jsnRaptor, {pointToLayer:returnRaptorMarker, filter:filterRaptor});
+                    lyrRaptorNests = L.geoJSON(jsnRaptor, {pointToLayer:returnRaptorMarker});
 
                       arRaptorIDs.sort(function(a,b){return a-b});
                       $("#txtFindRaptor").autocomplete({
                           source:arRaptorIDs
                       });
+
                       lyrMarkerCluster = L.markerClusterGroup();
                       lyrMarkerCluster.clearLayers();
                       lyrMarkerCluster.addLayer(lyrRaptorNests);
