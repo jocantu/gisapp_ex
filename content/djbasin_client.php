@@ -633,8 +633,9 @@
 
             $("#btnFindProject").click(function(){
                 var val = $("#txtFindProject").val();
-                var lyr = returnLayerByAttribute(lyrClientLines,'project',val);
-                if (lyr) {
+                var lyr = returnLayerByAttribute("dj_linear",'project',val,
+                function(lyr){
+                    if (lyr) {
                     if (lyrSearch) {
                         lyrSearch.remove();
                     }
@@ -647,9 +648,10 @@
                     fgpDrawnItems.clearLayers();
                     fgpDrawnItems.addLayer(lyr);
 
-                } else {
-                    $("#divProjectError").html("**** Project ID not found ****");
-                }
+                    } else {
+                        $("#divProjectError").html("**** Project ID not found ****");
+                    }
+                });
             });
 
             $("#lblProject").click(function(){
@@ -1068,7 +1070,7 @@
                 return "["+ll.lat.toFixed(5)+", "+ll.lng.toFixed(5)+"]";
             }
 
-            function returnLayerByAttribute(tbl,field,val) {
+            function returnLayerByAttribute(tbl,fld,val,callback) {
                 var whr = fld+"='"+val+"'";
                 $.ajax({
                     url:'load_data.php',
@@ -1077,17 +1079,21 @@
                     success: function(response){
                         if (response.substr(0,5)=="ERROR") {
                             alert('response');
+                            callback(false);
                         } else {
                             var jsn = JSON.parse(response);
                             var lyr = L.geoJSON(jsn);
                             var arLyrs=lyr.getLayers();
                             if (arLyrs.length>0) {
-                                return arLyrs[0];
+                                callback(arLyrs[0]);
+                            } else {
+                                callback(false);
                             }
                         }
                     }, 
                     error: function(xhr, status, error) {
-
+                        alert('ERROR: '+error);
+                        callback(false);
                     }
                 });
                 // var arLayers = lyr.getLayers();
