@@ -373,17 +373,17 @@
                 refreshBUOWL();
                 refreshGBH();
 
-                lyrBUOWL = L.geoJSON.ajax('data/wildlife_buowl.geojson', {style:styleBUOWL, onEachFeature:processBUOWL, filter:filterBUOWL}).addTo(mymap);
-                lyrBUOWL.on('data:loaded', function(){
-                    arHabitatIDs.sort(function(a,b){return a-b});
-                    $("#txtFindBUOWL").autocomplete({
-                        source:arHabitatIDs
-                    });
-                    jsnBUOWLbuffer = turf.buffer(lyrBUOWL.toGeoJSON(), 0.3, {units:'kilometers'});
-                    console.log(jsnBUOWLbuffer);
-                    lyrBUOWLbuffer = L.geoJSON(jsnBUOWLbuffer, {style:{color:'yellow', dashArray:'5,5', fillOpacity:0}}).addTo(mymap);
-                    lyrBUOWL.bringToFront();
-                });
+                // lyrBUOWL = L.geoJSON.ajax('data/wildlife_buowl.geojson', {style:styleBUOWL, onEachFeature:processBUOWL}).addTo(mymap);
+                // lyrBUOWL.on('data:loaded', function(){
+                //     arHabitatIDs.sort(function(a,b){return a-b});
+                //     $("#txtFindBUOWL").autocomplete({
+                //         source:arHabitatIDs
+                //     });
+                //     jsnBUOWLbuffer = turf.buffer(lyrBUOWL.toGeoJSON(), 0.3, {units:'kilometers'});
+                //     console.log(jsnBUOWLbuffer);
+                //     lyrBUOWLbuffer = L.geoJSON(jsnBUOWLbuffer, {style:{color:'yellow', dashArray:'5,5', fillOpacity:0}}).addTo(mymap);
+                //     lyrBUOWL.bringToFront();
+                // });
 
 
                 // ********* Setup Layer Control  ***************
@@ -475,20 +475,6 @@
                 arHabitatIDs.push(att.habitat_id.toString())
             }
 
-            function filterBUOWL(json){
-                var att = json.properties;
-                if (att.recentstatus=='REMOVED') {
-                    return false;
-                } else {
-                    var optFilter = $("input[name=fltBUOWL]:checked").val();
-                    if (optFilter=='ALL') {
-                        return true;
-                    } else {
-                        return (att.hist_occup==optFilter);
-                    }
-                }
-            }
-
             $("#txtFindBUOWL").on('keyup paste', function(){
                 var val = $("#txtFindBUOWL").val();
                 testLayerAttribute(arHabitatIDs, val, "Habitat ID", "#divFindBUOWL", "#divBUOWLError", "#btnFindBUOWL");
@@ -525,14 +511,24 @@
             });
 
             $("input[name=fltBUOWL]").click(function(){
-                refreshBUOWL();
+                var optFilter = $("input[name=fltBUOWL]:checked").val();
+                if (optFilter=='ALL') {
+                    refreshBUOWL();
+                } else {
+                    refreshBUOWL("hist_occup='"+optFilter+"'");
+                }
             });
 
 
 
-            function refreshBUOWL(){
+            function refreshBUOWL(whr){
+                if (whr) {
+                    var objData = {tbl:'dj_buowl', flds:"id, habitat_id, habitat, recentstatus, hist_occup", where:whr};
+                } else {
+                    var objData = {tbl:'dj_buowl', flds:"id, habitat_id, habitat, recentstatus, hist_occup"};
+                }
               $.ajax({url:'load_data.php',
-                data: {tbl:'dj_buowl', flds:"id, habitat_id, habitat, recentstatus, hist_occup"},
+                data: objData,
                 type: 'POST',
                 success: function(response){
                   if (response.substring(0,5)=="ERROR"){
@@ -543,15 +539,15 @@
                     if (lyrBUOWL) {
                       ctlLayers.removeLayer(lyrBUOWL);
                       lyrBUOWL.remove();
-                      //lyrBUOWLbuffer.remove();
+                      lyrBUOWLbuffer.remove();
                     }
-                    lyrBUOWL = L.geoJSON(jsnBUOWL, {style:styleBUOWL, onEachFeature:processBUOWL, filter:filterBUOWL}).addTo(mymap);
+                    lyrBUOWL = L.geoJSON(jsnBUOWL, {style:styleBUOWL, onEachFeature:processBUOWL}).addTo(mymap);
                     ctlLayers.addOverlay(lyrBUOWL, "Burrowing Owl Habitat");
                       arHabitatIDs.sort(function(a,b){return a-b});
                       $("#txtFindBUOWL").autocomplete({
                           source:arHabitatIDs
                       });
-                      refreshBUOWLbuffer();
+                      refreshBUOWLbuffer(whr);
                   }
                 },
               error: function(xhr, status, error){
@@ -560,9 +556,14 @@
               });
             };
 
-            function refreshBUOWLbuffer(){
+            function refreshBUOWLbuffer(whr){
+                if (whr) {
+                    var objData = {tbl:'dj_buowl', flds:"id, habitat_id, habitat, recentstatus, hist_occup", where:whr, distance:300};
+                } else {
+                    var objData = {tbl:'dj_buowl', flds:"id, habitat_id, habitat, recentstatus, hist_occup", distance:300};
+                }
               $.ajax({url:'load_data.php',
-                data: {tbl:'dj_buowl', flds:"id, habitat_id, habitat, recentstatus, hist_occup", distance:300},
+                data: objData,
                 type: 'POST',
                 success: function(response){
                   if (response.substring(0,5)=="ERROR"){
@@ -572,7 +573,7 @@
                     if (lyrBUOWLbuffer) {
                       lyrBUOWLbuffer.remove();
                     }
-                    lyrBUOWLbuffer = L.geoJSON(jsnBUOWLbuffer, {style:{color: 'hotpink', dashArray:'5,5',fillOpacity:0}, filter:filterBUOWL}).addTo(mymap);
+                    lyrBUOWLbuffer = L.geoJSON(jsnBUOWLbuffer, {style:{color: 'hotpink', dashArray:'5,5',fillOpacity:0}}).addTo(mymap);
                     lyrBUOWL.bringToFront();
                   }
                 },
@@ -623,77 +624,7 @@
 
             }
 
-            function filterClientLines(json) {
-                var arProjectFilter=[];
-                $("input[name=fltProject]").each(function(){
-                    if (this.checked) {
-                        arProjectFilter.push(this.value);
-                    }
-                });
-                var att = json.properties;
-                switch (att.type) {
-                    case "Pipeline":
-                        return (arProjectFilter.indexOf('Pipeline')>=0);
-                        break;
-                    case "Flowline":
-                        return (arProjectFilter.indexOf('Flowline')>=0);
-                        break;
-                    case "Flowline, est.":
-                        return (arProjectFilter.indexOf('Flowline')>=0);
-                        break;
-                    case "Electric Line":
-                        return (arProjectFilter.indexOf('Electric')>=0);
-                        break;
-                    case "Access Road - Confirmed":
-                        return (arProjectFilter.indexOf('Road')>=0);
-                        break;
-                    case "Access Road - Estimated":
-                        return (arProjectFilter.indexOf('Road')>=0);
-                        break;
-                    case "Extraction":
-                        return (arProjectFilter.indexOf('Extraction')>=0);
-                        break;
-                    default:
-                        return (arProjectFilter.indexOf('Other')>=0);
-                        break;
-                }
-            }
 
-            function filterClientLines(json) {
-                var arProjectFilter=[];
-                $("input[name=fltProject]").each(function(){
-                    if (this.checked) {
-                        arProjectFilter.push(this.value);
-                    }
-                });
-                var att = json.properties;
-                switch (att.type) {
-                    case "Pipeline":
-                        return (arProjectFilter.indexOf('Pipeline')>=0);
-                        break;
-                    case "Flowline":
-                        return (arProjectFilter.indexOf('Flowline')>=0);
-                        break;
-                    case "Flowline, est.":
-                        return (arProjectFilter.indexOf('Flowline')>=0);
-                        break;
-                    case "Electric Line":
-                        return (arProjectFilter.indexOf('Electric')>=0);
-                        break;
-                    case "Access Road - Confirmed":
-                        return (arProjectFilter.indexOf('Road')>=0);
-                        break;
-                    case "Access Road - Estimated":
-                        return (arProjectFilter.indexOf('Road')>=0);
-                        break;
-                    case "Extraction":
-                        return (arProjectFilter.indexOf('Extraction')>=0);
-                        break;
-                    default:
-                        return (arProjectFilter.indexOf('Other')>=0);
-                        break;
-                }
-            }
 
             $("#txtFindProject").on('keyup paste', function(){
                 var val = $("#txtFindProject").val();
@@ -734,19 +665,65 @@
             });
 
             $("#btnRefreshLinears").click(function(){
-              alert("refreshing Linears");
               refreshLinears();
             });
 
 
 
             $("#btnProjectFilter").click(function(){
-                refreshLinears();
+                alert('Button clicked');
+                var arTypes=[];
+                var cntChecks=0;
+                $("input[name=fltProject]").each(function(){
+                    if (this.checked) {
+                        if (this.value=='Pipeline') {
+                            arTypes.push("'Pipeline'");
+                            cntChecks++;
+                        }
+                        if (this.value==='Flowline'){
+                            arTypes.push("'Flowline'");
+                            arTypes.push("'Flowline, est.'");
+                            cntChecks++;
+                        }
+                        if (this.value=='Electric') {
+                            arTypes.push("'Electric Line'");
+                            cntChecks++;
+                        }
+                        if (this.value=='Road') {
+                            arTypes.push("'Access Road - Confirmed'");
+                            arTypes.push("'Access Road - Estimated'");
+                            cntChecks++;
+                        }
+                        if (this.value=='Extraction') {
+                            arTypes.push("'Extraction'");
+                            arTypes.push("'Delayed-Extraction'");
+                            cntChecks++;
+                        }
+                        if (this.value=='Other') {
+                            arTypes.push("'Other'");
+                            arTypes.push("'Underground-pipes'");
+                            cntChecks++;
+                        }
+              }});
+
+              if (cntChecks==0) {
+                  refreshLinears("1=2");
+              } else if (cntChecks==6) {
+                  refreshLinears();
+              } else {
+                  alert("type IN ("+arTypes.toString()+")");
+                  refreshLinears("type IN ("+arTypes.toString()+")");
+              }
             });
 
-            function refreshLinears(){
+            function refreshLinears(whr){
+                if (whr) {
+                    var objData = {tbl:'dj_linear', flds:"id, type, row_width, project", where:whr}
+                } else {
+                    var objData = {tbl:'dj_linear', flds:"id, type, row_width, project"}
+                }
               $.ajax({url:'load_data.php',
-                data: {tbl:'dj_linear', flds:"id, type, row_width, project"},
+                data: objData,
                 type: 'POST',
                 success: function(response){
                   if (response.substring(0,5)=="ERROR"){
@@ -760,13 +737,14 @@
                       lyrClientLinesBuffer.remove();
                     }
                     lyrClientLinesBuffer = L.featureGroup();
-                    lyrClientLines = L.geoJSON(jsnLinears, {style:styleClientLinears, onEachFeature:processClientLinears, filter:filterClientLines}).addTo(mymap);
+                    lyrClientLines = L.geoJSON(jsnLinears, {style:styleClientLinears, onEachFeature:processClientLinears}).addTo(mymap);
                     ctlLayers.addOverlay(lyrClientLines, "Linear Projects");
                       arProjectIDs.sort(function(a,b){return a-b});
                       $("#txtFindProject").autocomplete({
                           source:arProjectIDs
                       });
-                      refreshLinearsBuffers();
+                    refreshLinearsBuffers(whr);
+                    lyrClientLines.bringToFront();
                     }
                 },
               error: function(xhr, status, error){
@@ -776,9 +754,14 @@
             };
 
 
-            function refreshLinearsBuffers(){
+            function refreshLinearsBuffers(whr){
+                if (whr) {
+                    var objData = {tbl:'dj_linear', flds:"id, type, row_width, project", where:whr, distance:"row_width"};
+                } else {
+                    var objData = {tbl:'dj_linear', flds:"id, type, row_width, project", distance:"row_width"};
+                }
               $.ajax({url:'load_data.php',
-                data: {tbl:'dj_linear', flds:"id, type, row_width, project", distance:"row_width"},
+                data: objData,
                 type: 'POST',
                 success: function(response){
                   if (response.substring(0,5)=="ERROR"){
@@ -788,8 +771,8 @@
                     if (lyrClientLinesBuffer) {
                       lyrClientLinesBuffer.remove();
                     }
-                    lyrClientLinesBuffer = L.geoJSON(jsnLinearsBuffers, {style:{color: 'grey', dashArray:'5,5', fillOpacity:0},
-                    filter:filterClientLines}).addTo(mymap);
+                    lyrClientLinesBuffer = L.geoJSON(jsnLinearsBuffers, {style:{color: 'grey', dashArray:'5,5', fillOpacity:0}}).addTo(mymap);
+                    lyrClientLines.bringToFront();
                     }
                 },
               error: function(xhr, status, error){
@@ -1085,15 +1068,36 @@
                 return "["+ll.lat.toFixed(5)+", "+ll.lng.toFixed(5)+"]";
             }
 
-            function returnLayerByAttribute(lyr,att,val) {
-                var arLayers = lyr.getLayers();
-                for (i=0;i<arLayers.length-1;i++) {
-                    var ftrVal = arLayers[i].feature.properties[att];
-                    if (ftrVal==val) {
-                        return arLayers[i];
+            function returnLayerByAttribute(tbl,field,val) {
+                var whr = fld+"='"+val+"'";
+                $.ajax({
+                    url:'load_data.php',
+                    data: {tbl:tbl, where:whr},
+                    type: 'POST',
+                    success: function(response){
+                        if (response.substr(0,5)=="ERROR") {
+                            alert('response');
+                        } else {
+                            var jsn = JSON.parse(response);
+                            var lyr = L.geoJSON(jsn);
+                            var arLyrs=lyr.getLayers();
+                            if (arLyrs.length>0) {
+                                return arLyrs[0];
+                            }
+                        }
+                    }, 
+                    error: function(xhr, status, error) {
+
                     }
-                }
-                return false;
+                });
+                // var arLayers = lyr.getLayers();
+                // for (i=0;i<arLayers.length-1;i++) {
+                //     var ftrVal = arLayers[i].feature.properties[att];
+                //     if (ftrVal==val) {
+                //         return arLayers[i];
+                //     }
+                // }
+                // return false;
             }
 
             function returnLayersByAttribute(lyr,att,val) {
