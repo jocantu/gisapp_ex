@@ -482,23 +482,25 @@
 
             $("#btnFindBUOWL").click(function(){
                 var val = $("#txtFindBUOWL").val();
-                var lyr = returnLayerByAttribute(lyrBUOWL,'habitat_id',val);
-                if (lyr) {
-                    if (lyrSearch) {
-                        lyrSearch.remove();
+                var lyr = returnLayerByAttribute("dj_buowl",'habitat_id',val,
+                function(lyr){
+                    if (lyr) {
+                        if (lyrSearch) {
+                            lyrSearch.remove();
+                        }
+                        lyrSearch = L.geoJSON(lyr.toGeoJSON(), {style:{color:'red', weight:10, opacity:0.5, fillOpacity:0}}).addTo(mymap);
+                        mymap.fitBounds(lyr.getBounds().pad(1));
+                        var att = lyr.feature.properties;
+                        $("#divBUOWLData").html("<h4 class='text-center'>Attributes</h4><h5>Habitat: "+att.habitat+"</h5><h5>Historically Occupied: "+att.hist_occup+"</h5><h5>Recent Status: "+att.recentstatus+"</h5>");
+                        $("#divBUOWLError").html("");
+
+                        fgpDrawnItems.clearLayers();
+                        fgpDrawnItems.addLayer(lyr);
+
+                    } else {
+                        $("#divBUOWLError").html("**** Habitat ID not found ****");
                     }
-                    lyrSearch = L.geoJSON(lyr.toGeoJSON(), {style:{color:'red', weight:10, opacity:0.5, fillOpacity:0}}).addTo(mymap);
-                    mymap.fitBounds(lyr.getBounds().pad(1));
-                    var att = lyr.feature.properties;
-                    $("#divBUOWLData").html("<h4 class='text-center'>Attributes</h4><h5>Habitat: "+att.habitat+"</h5><h5>Historically Occupied: "+att.hist_occup+"</h5><h5>Recent Status: "+att.recentstatus+"</h5>");
-                    $("#divBUOWLError").html("");
-
-                    fgpDrawnItems.clearLayers();
-                    fgpDrawnItems.addLayer(lyr);
-
-                 } else {
-                    $("#divBUOWLError").html("**** Habitat ID not found ****");
-                }
+                });
             });
 
             $("#btnRefreshBUOWL").click(function(){
@@ -806,23 +808,25 @@
 
             $("#btnFindEagle").click(function(){
                 var val = $("#txtFindEagle").val();
-                var lyr = returnLayerByAttribute(lyrEagleNests,'nest_id',val);
-                if (lyr) {
-                    if (lyrSearch) {
-                        lyrSearch.remove();
+                var lyr = returnLayerByAttribute("dj_eagle",'nest_id',val,
+                function(lyr){
+                    if (lyr) {
+                        if (lyrSearch) {
+                            lyrSearch.remove();
+                        }
+                        lyrSearch = L.circle(lyr.getLatLng(), {radius:800, color:'red', weight:10, opacity:0.5, fillOpacity:0}).addTo(mymap);
+                        mymap.setView(lyr.getLatLng(), 14);
+                        var att = lyr.feature.properties;
+                        $("#divEagleData").html("<h4 class='text-center'>Attributes</h4><h5>Status: "+att.status+"</h5>");
+                        $("#divEagleError").html("");
+
+                        fgpDrawnItems.clearLayers();
+                        fgpDrawnItems.addLayer(lyr);
+
+                    } else {
+                        $("#divEagleError").html("**** Eagle Nest ID not found ****");
                     }
-                    lyrSearch = L.circle(lyr.getLatLng(), {radius:800, color:'red', weight:10, opacity:0.5, fillOpacity:0}).addTo(mymap);
-                    mymap.setView(lyr.getLatLng(), 14);
-                    var att = lyr.feature.properties;
-                    $("#divEagleData").html("<h4 class='text-center'>Attributes</h4><h5>Status: "+att.status+"</h5>");
-                    $("#divEagleError").html("");
-
-                    fgpDrawnItems.clearLayers();
-                    fgpDrawnItems.addLayer(lyr);
-
-                 } else {
-                    $("#divEagleError").html("**** Eagle Nest ID not found ****");
-                }
+                });
             });
 
 
@@ -918,34 +922,36 @@
 
             $("#btnFindRaptor").click(function(){
                 var val = $("#txtFindRaptor").val();
-                var lyr = returnLayerByAttribute(lyrRaptorNests,'nest_id',val);
-                if (lyr) {
-                    if (lyrSearch) {
-                        lyrSearch.remove();
-                    }
-                    var att = lyr.feature.properties;
-                    switch (att.recentspecies) {
-                        case 'Red-tail Hawk':
-                            var radRaptor = 533;
-                            break;
-                        case 'Swainsons Hawk':
-                            var radRaptor = 400;
-                            break;
-                        default:
-                            var radRaptor = 804;
-                            break;
-                    }
-                    lyrSearch = L.circle(lyr.getLatLng(), {radius:radRaptor, color:'red', weight:10, opacity:0.5, fillOpacity:0}).addTo(mymap);
-                    mymap.setView(lyr.getLatLng(), 14);
-                    $("#divRaptorData").html("<h4 class='text-center'>Attributes</h4><h5>Status: "+att.recentstatus+"</h5><h5>Species: "+att.recentspecies+"</h5><h5>Last Survey: "+att.lastsurvey+"</h5>");
-                    $("#divRaptorError").html("");
+                var lyr = returnLayerByAttribute("dj_raptor",'nest_id',val,
+                function(lyr){
+                    if (lyr) {
+                        if (lyrSearch) {
+                            lyrSearch.remove();
+                        }
+                        var att = lyr.feature.properties;
+                        switch (att.recentspecies) {
+                            case 'Red-tail Hawk':
+                                var radRaptor = 533;
+                                break;
+                            case 'Swainsons Hawk':
+                                var radRaptor = 400;
+                                break;
+                            default:
+                                var radRaptor = 804;
+                                break;
+                        }
+                        lyrSearch = L.circle(lyr.getLatLng(), {radius:radRaptor, color:'red', weight:10, opacity:0.5, fillOpacity:0}).addTo(mymap);
+                        mymap.setView(lyr.getLatLng(), 14);
+                        $("#divRaptorData").html("<h4 class='text-center'>Attributes</h4><h5>Status: "+att.recentstatus+"</h5><h5>Species: "+att.recentspecies+"</h5><h5>Last Survey: "+att.lastsurvey+"</h5>");
+                        $("#divRaptorError").html("");
 
-                    fgpDrawnItems.clearLayers();
-                    fgpDrawnItems.addLayer(lyr);
+                        fgpDrawnItems.clearLayers();
+                        fgpDrawnItems.addLayer(lyr);
 
-                 } else {
-                    $("#divRaptorError").html("**** Raptor Nest ID not found ****");
-                }
+                    } else {
+                        $("#divRaptorError").html("**** Raptor Nest ID not found ****");
+                    }
+                });
             });
 
             $("#btnRefreshRaptors").click(function(){
